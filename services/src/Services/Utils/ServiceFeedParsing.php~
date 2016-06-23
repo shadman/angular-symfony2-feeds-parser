@@ -1,0 +1,124 @@
+<?php
+namespace Services\Utils;
+
+use Services\Utils\CurlRequest;
+
+class ServiceFeedParsing {
+
+	public function __construct(){
+
+	}
+
+	/*
+	* Get records from xml/json URL  
+	*/
+    	public function getFeedRecords($url, $type='xml', $limit=100) {
+		$request = new CurlRequest();
+		parse_str($url);
+
+		// Restricting limit on per request, not allowing morethan 500 records at a time
+		if ( $limit > 500 ) $url = $url."&limit=500";
+
+		$response = $request->getRequest($url);
+
+		if ($type=="json")		
+			$result = $this->parseJsonData($response);
+		else
+			$result = $this->parseXmlData($response);
+
+		return $result;
+		
+    	}
+	
+	/*
+	* Parsing Json
+	*/
+	public function parseJsonData($data){
+		
+		$index = 0;
+
+		$data = json_decode($data);
+		$result['products'] = array();
+		
+		if (!isset($data)) return $result;
+		
+		foreach($data->products as $items){
+			
+		    $result['products'] = settingJsonResponse($index, $items); 
+		    $index++;
+
+		}
+		return $result;
+	}
+	
+	/*
+	* Parsing XML
+	*/
+	public function parseXmlData($data){
+		
+		$h_co = 0;
+		$id = 0;
+
+		$data = simplexml_load_string($data, 'SimpleXMLElement', LIBXML_NOCDATA | LIBXML_NOBLANKS); //("Error: Cannot create object");
+
+		$result['products'] = array();
+		
+		if ( !isset($data) || !is_object($data) ) return $result;
+
+		foreach($data->product as $items){
+
+			$hc[$h_co]['_key'] = ++$id;
+			$hc[$h_co]['id'] = (isset($items->productID)) ? $this->dataToString($items->productID) : '';
+			$hc[$h_co]['name'] = (isset($items->name)) ? $this->dataToString($items->name) : '';
+			$hc[$h_co]['description'] = (isset($items->description)) ? $this->dataToString($items->description) : '';
+			$hc[$h_co]['price']['currency'] = (isset($items->price->attributes()->currency)) ? $this->dataToString($items->price->attributes()->currency) : 'EUR';
+			$hc[$h_co]['price']['amount'] = (isset($items->price)) ? $this->dataToString($items->price) : '';
+			$hc[$h_co]['url'] = (isset($items->productURL)) ? $this->dataToString($items->productURL) : '';
+			$hc[$h_co]['image_url'] = (isset($items->imageURL)) ? $this->dataToString($items->imageURL) : '';
+
+			$hc[$h_co]['categories'] = array();
+			if (isset($items->categories) ){
+				foreach ($items->categories as $category) {
+					$hc[$h_co]['categories'][] = $this->dataToString($category->category);
+				}
+			}
+
+			$result['products'] = $hc;
+			$h_co++;
+
+		}
+
+		return $result;
+	}
+
+	/*
+	* Converting XML Object to String
+	*/
+	function dataToString($object=null){
+		return $object->__toString();
+	}
+
+	/*
+	* Setting Json Response
+	*/
+	function settingJsonResponse($index, $items){
+		$hc[$index]['id'] = (isset($items->ID))?$items->ID:'';
+		$hc[$index]['name'] = (isset($items->name))?$items->name:'';
+		$hc[$index]['description'] = (isset($items->description))?$items->description:'';
+		$hc[$index]['price']['currency'] = (isset($items->price->currency))?$items->price->currency:'';
+		$hc[$index]['price']['amount'] = (isset($items->price->amount))?$items->price->amount:'';
+		$hc[$index]['url'] = (isset($items->URL))?$items->URL:'';
+		$hc[$index]['image_url'] = (isset($items->images))?$items->images[0]:'';
+
+		$hc[$index]['categories'] = array();
+		if (isset($items->categories) ){
+			foreach ($items->categories as $category) {
+				$hc[$index]['categories'][] = $category;
+			}
+		}
+
+		return $hc;
+	}
+	
+	
+}

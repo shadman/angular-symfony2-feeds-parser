@@ -1,0 +1,4 @@
+AppBundle\Model\FeedCollection:
+  exclusion_policy: ALL
+  xml_root_name: home
+  properties:

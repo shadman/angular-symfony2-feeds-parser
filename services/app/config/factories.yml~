@@ -1,0 +1,4 @@
+user:
+  class: HomeController
+  param:
+    timeout:    1800 #session lifetime value in seconds
